@@ -15,6 +15,7 @@ try{
  await caption('Hireflow — candidate management');
  await page.getByRole('button',{name:'Load sample candidates',exact:true}).click();
  await page.getByText('Arjun Verma',{exact:true}).first().waitFor();
+ await page.evaluate(()=>window.scrollTo(0,0));
  await caption('Dashboard totals and candidate stage distribution');
  await page.screenshot({path:out+'/dashboard.png',fullPage:true});
  await page.getByRole('button',{name:'Add candidate',exact:true}).click();

@@ -8,6 +8,8 @@ A small recruiting app for the EarlyJobs assignment: candidate management, hirin
 
 ![Overview](docs/overview.png)
 
+![Candidate table](docs/candidates.png)
+
 ## Features
 
 - Add, view, edit and delete candidates with server-side validation and duplicate-email checks.
