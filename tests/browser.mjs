@@ -71,9 +71,25 @@ try{
  const mp=await mobile.newPage();await mp.goto(base,{waitUntil:'domcontentloaded'});await mp.getByText('Total candidates',{exact:true}).waitFor();
  await mp.screenshot({path:out+'/mobile.png',fullPage:true});
  assert.equal(await mp.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);await mobile.close();
- await api.delete(base+'/api/candidates?id='+c.id);r=await api.get(base+'/api/candidates');assert.equal((await r.json()).length,9);
+ await api.delete(base+'/api/candidates?id='+c.id,{maxRetries:2});r=await api.get(base+'/api/candidates',{maxRetries:2});assert.equal((await r.json()).length,9);
+ // Real table behavior and dialog keyboard focus after the library upgrade.
+ for(const name of ['Table Check A','Table Check Z']) {
+   r=await api.post(base+'/api/candidates',{data:{...c,id:undefined,name,email:name.replaceAll(' ','').toLowerCase()+'@example.com'}});assert.equal(r.status(),200);
+ }
+ await page.reload();await page.getByRole('button',{name:/Candidates.*11/}).click();
+ await page.getByRole('button',{name:'Sort by Candidate',exact:true}).click();
+ let names=await page.locator('tbody .person strong').allTextContents();assert.deepEqual(names,[...names].sort((a,b)=>a.localeCompare(b)));
+ await page.getByRole('button',{name:'Next page',exact:true}).click();assert.equal(await page.locator('tbody tr').count(),1);
+ await page.getByRole('button',{name:'Previous page',exact:true}).click();assert.equal(await page.locator('tbody tr').count(),10);
+ await page.getByLabel('Rows per page').selectOption('25');assert.equal(await page.locator('tbody tr').count(),11);
+ await page.locator('tbody tr').first().press('Enter');await page.getByRole('dialog').waitFor();
+ for(let i=0;i<15;i++){await page.keyboard.press('Tab');assert.equal(await page.evaluate(()=>!!document.activeElement?.closest('[role="dialog"]')),true);}
+ await page.keyboard.press('Escape');await page.getByRole('dialog').waitFor({state:'hidden'});
+ await page.getByRole('button',{name:'Interview 2',exact:true}).click();assert.equal(await page.locator('tbody tr').count(),2);
+ await caption('Sort candidates, control page size and jump to a hiring stage');
+ r=await api.get(base+'/api/candidates',{maxRetries:2});for(const record of await r.json())if(record.name.startsWith('Table Check '))await api.delete(base+'/api/candidates?id='+record.id,{maxRetries:2});
  assert.deepEqual(errors,[]);
- console.log('PASS: create, edit, stage dropdown, drag/drop, history, search, combined filters, export, persistence, validation, duplicate protection, workspace isolation, deletion, desktop/mobile layout, no browser runtime errors.');
+ console.log('PASS: create, edit, stage dropdown, drag/drop, history, search, combined filters, export, persistence, validation, duplicate protection, workspace isolation, deletion, sorting, pagination, page size, stage tabs, dialog focus trap and Escape, desktop/mobile layout, no browser runtime errors.');
 }finally{const video=page.video();await context.close();if(video)await rename(await video.path(),out+'/Hireflow-demo.webm');await browser.close();}
 
 

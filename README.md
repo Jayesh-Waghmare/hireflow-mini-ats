@@ -4,7 +4,7 @@ A small recruiting app for the EarlyJobs assignment: candidate management, hirin
 
 - [Live application](https://hireflow-mini-ats-kappa.vercel.app)
 - [Repository](https://github.com/Jayesh-Waghmare/hireflow-mini-ats)
-- [Demo video](https://github.com/Jayesh-Waghmare/hireflow-mini-ats/releases/download/v1.2.0/Hireflow-demo.webm)
+- [Demo video](https://github.com/Jayesh-Waghmare/hireflow-mini-ats/releases/download/v1.3.0/Hireflow-demo.webm)
 
 ![Overview](docs/overview.png)
 
@@ -19,6 +19,16 @@ A small recruiting app for the EarlyJobs assignment: candidate management, hirin
 - Filtered CSV export with quoting and spreadsheet formula escaping.
 - Desktop and mobile layouts; optional fictional sample candidates.
 - Private persistent storage and isolated browser workspaces.
+
+## Frontend libraries
+
+- TanStack Table v8: sortable candidate columns, pagination and page size controls.
+- Radix UI Dialog: accessible forms and profile drawers with keyboard focus management.
+- Sonner: save, stage-change and export notifications.
+- Lucide React: consistent interface icons.
+- Inter, bundled with Fontsource: typography without a third-party font request.
+
+Stage shortcuts, responsive layouts and reduced-motion support are styled specifically for this recruiting workflow.
 
 ## Architecture
 

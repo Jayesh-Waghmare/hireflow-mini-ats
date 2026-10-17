@@ -1,4 +1,7 @@
 import { useEffect, useState, FormEvent } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
+import { Toaster, toast } from "sonner";
+import { CandidateTable } from "./CandidateTable";
 import {
   Users,
   LayoutDashboard,
@@ -129,12 +132,7 @@ const initials = (n: string) =>
     .map((v) => v[0])
     .slice(0, 2)
     .join("");
-const date = (v: string) =>
-  new Date(v).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+const setToast = (message: string) => toast.success(message);
 export default function App() {
   const [items, setItems] = useState<Candidate[]>([]),
     [loading, setLoading] = useState(true),
@@ -144,7 +142,6 @@ export default function App() {
     [stage, setStage] = useState(""),
     [role, setRole] = useState("");
   const [error, setError] = useState(""),
-    [toast, setToast] = useState(""),
     [edit, setEdit] = useState<any>(null),
     [selected, setSelected] = useState<Candidate | null>(null),
     [confirmDelete, setConfirmDelete] = useState(false),
@@ -165,59 +162,6 @@ export default function App() {
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
-  useEffect(() => {
-    if (toast) {
-      const t = setTimeout(() => setToast(""), 3500);
-      return () => clearTimeout(t);
-    }
-  }, [toast]);
-  useEffect(() => {
-    const f = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setEdit(null);
-        setSelected(null);
-        setConfirmDelete(false);
-      }
-    };
-    window.addEventListener("keydown", f);
-    return () => window.removeEventListener("keydown", f);
-  }, []);
-  useEffect(() => {
-    if (!edit && !selected) return;
-    const previous = document.activeElement as HTMLElement | null;
-    document.body.style.overflow = "hidden";
-    const focusTimer = setTimeout(() => {
-      document
-        .querySelector<HTMLElement>(
-          '[role="dialog"] input, [role="dialog"] button',
-        )
-        ?.focus();
-    }, 50);
-    const trap = (e: KeyboardEvent) => {
-      if (e.key !== "Tab") return;
-      const dialog = document.querySelector('[role="dialog"]');
-      const nodes = dialog?.querySelectorAll<HTMLElement>(
-        "button:not(:disabled),input,select,textarea,a[href]",
-      );
-      if (!nodes?.length) return;
-      const first = nodes[0],
-        last = nodes[nodes.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        last.focus();
-        e.preventDefault();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        first.focus();
-        e.preventDefault();
-      }
-    };
-    document.addEventListener("keydown", trap);
-    return () => {
-      clearTimeout(focusTimer);
-      document.body.style.overflow = "";
-      document.removeEventListener("keydown", trap);
-      previous?.focus();
-    };
-  }, [!!edit, !!selected]);
   async function request(data: any) {
     const r = await fetch("/api/candidates", {
       method: "POST",
@@ -387,60 +331,14 @@ export default function App() {
     setRole("");
   }
   const table = (list: Candidate[], compact = false) => (
-    <div className="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>Candidate</th>
-            <th>Position</th>
-            <th>Stage</th>
-            {compact ? <th>Source</th> : <th>Experience</th>}
-            <th>Applied</th>
-            <th aria-label="Details" />
-          </tr>
-        </thead>
-        <tbody>
-          {list.map((c, i) => (
-            <tr
-              key={c.id}
-              tabIndex={0}
-              onClick={() => {
-                setSelected(c);
-                setConfirmDelete(false);
-              }}
-              onKeyDown={(e) => e.key === "Enter" && setSelected(c)}
-            >
-              <td>
-                <div className="person">
-                  <span className={"avatar color" + (i % 5)}>
-                    {initials(c.name)}
-                  </span>
-                  <div>
-                    <strong>{c.name}</strong>
-                    <small>{c.email}</small>
-                  </div>
-                </div>
-              </td>
-              <td>{c.role}</td>
-              <td>
-                <span className={"badge " + c.stage}>{c.stage}</span>
-              </td>
-              {compact ? (
-                <td>{c.source}</td>
-              ) : (
-                <td>
-                  {c.experience} {c.experience === 1 ? "year" : "years"}
-                </td>
-              )}
-              <td className="muted">{date(c.createdAt)}</td>
-              <td>
-                <ChevronRight size={16} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {!list.length && (
+    <CandidateTable
+      data={list}
+      compact={compact}
+      onSelect={(candidate) => {
+        setSelected(candidate);
+        setConfirmDelete(false);
+      }}
+      empty={
         <div className="empty">
           <Users size={30} />
           <h3>
@@ -467,11 +365,18 @@ export default function App() {
             </button>
           )}
         </div>
-      )}
-    </div>
+      }
+    />
   );
   return (
     <div className="app-shell">
+      {mobile && (
+        <button
+          className="nav-backdrop"
+          aria-label="Close navigation"
+          onClick={() => setMobile(false)}
+        />
+      )}
       <aside className={mobile ? "sidebar open" : "sidebar"}>
         <a className="brand" href="/" aria-label="Hireflow home">
           <span className="brand-icon">
@@ -496,6 +401,7 @@ export default function App() {
             <button
               key={name}
               className={view === name ? "nav-item active" : "nav-item"}
+              aria-current={view === name ? "page" : undefined}
               onClick={() => nav(name)}
             >
               <Icon size={19} />
@@ -554,6 +460,7 @@ export default function App() {
         <main>
           <div className="page-heading">
             <div>
+              <span className="eyebrow">RECRUITING WORKSPACE</span>
               <h1>
                 {view === "Overview"
                   ? "Overview"
@@ -596,6 +503,32 @@ export default function App() {
             </div>
           ) : (
             <>
+              {view === "Overview" && (
+                <section className="workspace-brief">
+                  <div>
+                    <span className="brief-mark">
+                      <Briefcase size={20} />
+                    </span>
+                    <div>
+                      <h2>Your hiring, at a glance.</h2>
+                      <p>
+                        {items.length
+                          ? `${metrics.active} active candidates across ${roles.length} positions. ${metrics.interviews} currently in the interview stage.`
+                          : "A clear view of every candidate, from first application to the final offer."}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setView("Candidates");
+                      setStage("Interview");
+                    }}
+                    disabled={!metrics.interviews}
+                  >
+                    Review interviews <ChevronRight size={16} />
+                  </button>
+                </section>
+              )}
               {view === "Overview" && (
                 <div className="stats">
                   {[
@@ -784,6 +717,31 @@ export default function App() {
               ) : (
                 <>
                   <section className="panel candidates-panel">
+                    <div
+                      className="stage-tabs"
+                      aria-label="Candidate stage shortcuts"
+                    >
+                      {[
+                        "",
+                        "Applied",
+                        "Screening",
+                        "Interview",
+                        "Offer",
+                        "Hired",
+                        "Rejected",
+                      ].map((value) => (
+                        <button
+                          key={value}
+                          aria-pressed={stage === value}
+                          onClick={() => setStage(value)}
+                        >
+                          {value || "All candidates"}
+                          <span>
+                            {value ? metrics.counts[value] : items.length}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                     <div className="filters">
                       <div className="search">
                         <Search size={18} />
@@ -882,7 +840,9 @@ export default function App() {
                                     <span className={"avatar color" + (j % 5)}>
                                       {initials(c.name)}
                                     </span>
-                                    <span className="card-menu"><ChevronRight size={14} /></span>
+                                    <span className="card-menu">
+                                      <ChevronRight size={14} />
+                                    </span>
                                   </div>
                                   <strong>{c.name}</strong>
                                   <small>{c.role}</small>
@@ -898,7 +858,6 @@ export default function App() {
                                   <div className="card-bottom">
                                     <MapPin size={12} />
                                     {c.location || "Location not set"}
-                                    
                                   </div>
                                 </button>
                               ))}
@@ -922,319 +881,323 @@ export default function App() {
           )}
         </main>
       </div>
-      {toast && (
-        <div className="toast" role="status">
-          <CheckCircle2 size={18} />
-          {toast}
-        </div>
-      )}
+      <Toaster position="bottom-right" closeButton richColors />
       {edit && (
-        <div className="overlay" onClick={() => !busy && setEdit(null)}>
-          <section
-            className="modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="edit-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal-header">
-              <div>
-                <h2 id="edit-title">
-                  {edit.id ? "Edit candidate" : "Add candidate"}
-                </h2>
-                <p>
-                  Enter the candidate’s contact details and application
-                  information.
-                </p>
-              </div>
-              <button
-                aria-label="Close form"
-                className="icon-button"
-                onClick={() => setEdit(null)}
-                disabled={busy}
-              >
-                <X />
-              </button>
-            </div>
-            <form onSubmit={save}>
-              <div className="form-grid">
-                <label>
-                  Full name <b>*</b>
-                  <input
-                    autoFocus
-                    required
-                    minLength={2}
-                    maxLength={100}
-                    value={edit.name}
-                    onChange={(e) => setEdit({ ...edit, name: e.target.value })}
-                    placeholder="e.g. Aditi Sharma"
-                  />
-                </label>
-                <label>
-                  Email address <b>*</b>
-                  <input
-                    type="email"
-                    required
-                    maxLength={200}
-                    value={edit.email}
-                    onChange={(e) =>
-                      setEdit({ ...edit, email: e.target.value })
-                    }
-                    placeholder="aditi@example.com"
-                  />
-                </label>
-                <label>
-                  Position <b>*</b>
-                  <input
-                    required
-                    minLength={2}
-                    maxLength={100}
-                    list="positions"
-                    value={edit.role}
-                    onChange={(e) => setEdit({ ...edit, role: e.target.value })}
-                  />
-                  <datalist id="positions">
-                    {[
-                      "Frontend Developer",
-                      "Backend Developer",
-                      "Product Designer",
-                      ...roles,
-                    ]
-                      .filter((v, i, a) => a.indexOf(v) === i)
-                      .map((r) => (
-                        <option key={r}>{r}</option>
-                      ))}
-                  </datalist>
-                </label>
-                <label>
-                  Hiring stage
-                  <select
-                    value={edit.stage}
-                    onChange={(e) =>
-                      setEdit({ ...edit, stage: e.target.value })
-                    }
-                  >
-                    {stages.map((s) => (
-                      <option key={s}>{s}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Location
-                  <input
-                    maxLength={100}
-                    value={edit.location}
-                    onChange={(e) =>
-                      setEdit({ ...edit, location: e.target.value })
-                    }
-                    placeholder="City or remote"
-                  />
-                </label>
-                <label>
-                  Experience (years)
-                  <input
-                    type="number"
-                    min={0}
-                    max={60}
-                    required
-                    value={edit.experience}
-                    onChange={(e) =>
-                      setEdit({ ...edit, experience: Number(e.target.value) })
-                    }
-                  />
-                </label>
-                <label>
-                  Source
-                  <select
-                    value={edit.source}
-                    onChange={(e) =>
-                      setEdit({ ...edit, source: e.target.value })
-                    }
-                  >
-                    {[
-                      "EarlyJobs",
-                      "LinkedIn",
-                      "Referral",
-                      "Careers page",
-                      "Other",
-                    ].map((s) => (
-                      <option key={s}>{s}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Skills
-                  <input
-                    maxLength={300}
-                    value={edit.skills}
-                    onChange={(e) =>
-                      setEdit({ ...edit, skills: e.target.value })
-                    }
-                    placeholder="React, TypeScript, Figma"
-                  />
-                </label>
-                <label className="full-width">
-                  Recruiter notes
-                  <textarea
-                    maxLength={5000}
-                    rows={3}
-                    value={edit.notes}
-                    onChange={(e) =>
-                      setEdit({ ...edit, notes: e.target.value })
-                    }
-                    placeholder="What should the hiring team know?"
-                  />
-                </label>
-              </div>
-              {error && (
-                <p className="form-error" role="alert">
-                  {error}
-                </p>
-              )}
-              <div className="modal-footer">
+        <Dialog.Root
+          open
+          onOpenChange={(open) => {
+            if (!open && !busy) setEdit(null);
+          }}
+        >
+          <Dialog.Portal>
+            <Dialog.Overlay className="dialog-backdrop" />
+            <Dialog.Content className="modal">
+              <div className="modal-header">
+                <div>
+                  <Dialog.Title id="edit-title">
+                    {edit.id ? "Edit candidate" : "Add candidate"}
+                  </Dialog.Title>
+                  <Dialog.Description>
+                    Contact details, application information and your notes.
+                  </Dialog.Description>
+                </div>
                 <button
-                  type="button"
-                  disabled={busy}
+                  aria-label="Close form"
+                  className="icon-button"
                   onClick={() => setEdit(null)}
+                  disabled={busy}
                 >
-                  Cancel
-                </button>
-                <button className="primary" disabled={busy}>
-                  {busy ? (
-                    <Loader2 size={16} className="spin" />
-                  ) : (
-                    <Check size={16} />
-                  )}{" "}
-                  {busy
-                    ? "Saving…"
-                    : edit.id
-                      ? "Save changes"
-                      : "Add candidate"}
+                  <X />
                 </button>
               </div>
-            </form>
-          </section>
-        </div>
+              <form onSubmit={save}>
+                <div className="form-grid">
+                  <label>
+                    Full name <b>*</b>
+                    <input
+                      autoFocus
+                      required
+                      minLength={2}
+                      maxLength={100}
+                      value={edit.name}
+                      onChange={(e) =>
+                        setEdit({ ...edit, name: e.target.value })
+                      }
+                      placeholder="e.g. Aditi Sharma"
+                    />
+                  </label>
+                  <label>
+                    Email address <b>*</b>
+                    <input
+                      type="email"
+                      required
+                      maxLength={200}
+                      value={edit.email}
+                      onChange={(e) =>
+                        setEdit({ ...edit, email: e.target.value })
+                      }
+                      placeholder="aditi@example.com"
+                    />
+                  </label>
+                  <label>
+                    Position <b>*</b>
+                    <input
+                      required
+                      minLength={2}
+                      maxLength={100}
+                      list="positions"
+                      value={edit.role}
+                      onChange={(e) =>
+                        setEdit({ ...edit, role: e.target.value })
+                      }
+                    />
+                    <datalist id="positions">
+                      {[
+                        "Frontend Developer",
+                        "Backend Developer",
+                        "Product Designer",
+                        ...roles,
+                      ]
+                        .filter((v, i, a) => a.indexOf(v) === i)
+                        .map((r) => (
+                          <option key={r}>{r}</option>
+                        ))}
+                    </datalist>
+                  </label>
+                  <label>
+                    Hiring stage
+                    <select
+                      value={edit.stage}
+                      onChange={(e) =>
+                        setEdit({ ...edit, stage: e.target.value })
+                      }
+                    >
+                      {stages.map((s) => (
+                        <option key={s}>{s}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Location
+                    <input
+                      maxLength={100}
+                      value={edit.location}
+                      onChange={(e) =>
+                        setEdit({ ...edit, location: e.target.value })
+                      }
+                      placeholder="City or remote"
+                    />
+                  </label>
+                  <label>
+                    Experience (years)
+                    <input
+                      type="number"
+                      min={0}
+                      max={60}
+                      required
+                      value={edit.experience}
+                      onChange={(e) =>
+                        setEdit({ ...edit, experience: Number(e.target.value) })
+                      }
+                    />
+                  </label>
+                  <label>
+                    Source
+                    <select
+                      value={edit.source}
+                      onChange={(e) =>
+                        setEdit({ ...edit, source: e.target.value })
+                      }
+                    >
+                      {[
+                        "EarlyJobs",
+                        "LinkedIn",
+                        "Referral",
+                        "Careers page",
+                        "Other",
+                      ].map((s) => (
+                        <option key={s}>{s}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Skills
+                    <input
+                      maxLength={300}
+                      value={edit.skills}
+                      onChange={(e) =>
+                        setEdit({ ...edit, skills: e.target.value })
+                      }
+                      placeholder="React, TypeScript, Figma"
+                    />
+                  </label>
+                  <label className="full-width">
+                    Recruiter notes
+                    <textarea
+                      maxLength={5000}
+                      rows={3}
+                      value={edit.notes}
+                      onChange={(e) =>
+                        setEdit({ ...edit, notes: e.target.value })
+                      }
+                      placeholder="What should the hiring team know?"
+                    />
+                  </label>
+                </div>
+                {error && (
+                  <p className="form-error" role="alert">
+                    {error}
+                  </p>
+                )}
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => setEdit(null)}
+                  >
+                    Cancel
+                  </button>
+                  <button className="primary" disabled={busy}>
+                    {busy ? (
+                      <Loader2 size={16} className="spin" />
+                    ) : (
+                      <Check size={16} />
+                    )}{" "}
+                    {busy
+                      ? "Saving…"
+                      : edit.id
+                        ? "Save changes"
+                        : "Add candidate"}
+                  </button>
+                </div>
+              </form>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
       )}
       {selected && !edit && (
-        <div
-          className="overlay drawer-overlay"
-          onClick={() => setSelected(null)}
+        <Dialog.Root
+          open
+          onOpenChange={(open) => {
+            if (!open && !busy) {
+              setSelected(null);
+              setConfirmDelete(false);
+            }
+          }}
         >
-          <section
-            className="drawer"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="candidate-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="drawer-top">
-              <span>CANDIDATE PROFILE</span>
-              <button
-                className="icon-button"
-                aria-label="Close profile"
-                onClick={() => setSelected(null)}
-              >
-                <X />
-              </button>
-            </div>
-            <span className="avatar large color0">
-              {initials(selected.name)}
-            </span>
-            <h2 id="candidate-title">{selected.name}</h2>
-            <p>{selected.role}</p>
-            <span className={"badge " + selected.stage}>{selected.stage}</span>
-            <div className="contact">
-              <a href={"mailto:" + selected.email}>
-                <Mail size={16} />
-                {selected.email}
-              </a>
-              <span>
-                <MapPin size={16} />
-                {selected.location || "Location not provided"}
-              </span>
-              <span>
-                <Briefcase size={16} />
-                {selected.experience} years of experience · {selected.source}
-              </span>
-            </div>
-            <label className="stage-control">
-              Move to stage
-              <select
-                disabled={busy}
-                value={selected.stage}
-                onChange={(e) => move(selected, e.target.value)}
-              >
-                {stages.map((s) => (
-                  <option key={s}>{s}</option>
-                ))}
-              </select>
-            </label>
-            <h3>Skills</h3>
-            <div className="skill-chips">
-              {selected.skills ? (
-                selected.skills
-                  .split(",")
-                  .map((t) => <span key={t}>{t.trim()}</span>)
-              ) : (
-                <p>No skills added yet.</p>
-              )}
-            </div>
-            <h3>Recruiter notes</h3>
-            <p className="notes">
-              {selected.notes ||
-                "No notes yet. Edit this profile to add your observations."}
-            </p>
-            <h3>Stage history</h3>
-            <div className="journey">
-              {JSON.parse(selected.history).map((h: any, i: number) => (
-                <div key={i}>
-                  <span className="journey-dot" />
-                  <strong>{h.text}</strong>
-                  <small>{new Date(h.at).toLocaleString("en-IN")}</small>
-                </div>
-              ))}
-            </div>
-            <div className="drawer-actions">
-              <button
-                className="primary"
-                disabled={busy}
-                onClick={() => {
-                  setError("");
-                  setEdit({ ...selected });
-                }}
-              >
-                Edit candidate
-              </button>
-              <button
-                className="danger"
-                disabled={busy}
-                onClick={() => setConfirmDelete(true)}
-              >
-                <Trash2 size={16} />
-                Delete
-              </button>
-            </div>
-            {confirmDelete && (
-              <div className="delete-confirm">
-                <strong>Delete {selected.name}?</strong>
-                <p>
-                  This permanently removes this candidate and their history.
-                </p>
-                <button disabled={busy} onClick={() => setConfirmDelete(false)}>
-                  Keep candidate
-                </button>
-                <button className="danger" disabled={busy} onClick={remove}>
-                  Yes, delete
+          <Dialog.Portal>
+            <Dialog.Overlay className="dialog-backdrop" />
+            <Dialog.Content className="drawer">
+              <div className="drawer-top">
+                <span>CANDIDATE PROFILE</span>
+                <button
+                  className="icon-button"
+                  aria-label="Close profile"
+                  onClick={() => setSelected(null)}
+                >
+                  <X />
                 </button>
               </div>
-            )}
-          </section>
-        </div>
+              <span className="avatar large color0">
+                {initials(selected.name)}
+              </span>
+              <Dialog.Title id="candidate-title">{selected.name}</Dialog.Title>
+              <Dialog.Description>{selected.role}</Dialog.Description>
+              <span className={"badge " + selected.stage}>
+                {selected.stage}
+              </span>
+              <div className="contact">
+                <a href={"mailto:" + selected.email}>
+                  <Mail size={16} />
+                  {selected.email}
+                </a>
+                <span>
+                  <MapPin size={16} />
+                  {selected.location || "Location not provided"}
+                </span>
+                <span>
+                  <Briefcase size={16} />
+                  {selected.experience} years of experience · {selected.source}
+                </span>
+              </div>
+              <label className="stage-control">
+                Move to stage
+                <select
+                  disabled={busy}
+                  value={selected.stage}
+                  onChange={(e) => move(selected, e.target.value)}
+                >
+                  {stages.map((s) => (
+                    <option key={s}>{s}</option>
+                  ))}
+                </select>
+              </label>
+              <h3>Skills</h3>
+              <div className="skill-chips">
+                {selected.skills ? (
+                  selected.skills
+                    .split(",")
+                    .map((t) => <span key={t}>{t.trim()}</span>)
+                ) : (
+                  <p>No skills added yet.</p>
+                )}
+              </div>
+              <h3>Recruiter notes</h3>
+              <p className="notes">
+                {selected.notes ||
+                  "No notes yet. Edit this profile to add your observations."}
+              </p>
+              <h3>Stage history</h3>
+              <div className="journey">
+                {JSON.parse(selected.history).map((h: any, i: number) => (
+                  <div key={i}>
+                    <span className="journey-dot" />
+                    <strong>{h.text}</strong>
+                    <small>{new Date(h.at).toLocaleString("en-IN")}</small>
+                  </div>
+                ))}
+              </div>
+              <div className="drawer-actions">
+                <button
+                  className="primary"
+                  disabled={busy}
+                  onClick={() => {
+                    setError("");
+                    setEdit({ ...selected });
+                  }}
+                >
+                  Edit candidate
+                </button>
+                <button
+                  className="danger"
+                  disabled={busy}
+                  onClick={() => setConfirmDelete(true)}
+                >
+                  <Trash2 size={16} />
+                  Delete
+                </button>
+              </div>
+              {confirmDelete && (
+                <div className="delete-confirm">
+                  <strong>Delete {selected.name}?</strong>
+                  <p>
+                    This permanently removes this candidate and their history.
+                  </p>
+                  <button
+                    disabled={busy}
+                    onClick={() => setConfirmDelete(false)}
+                  >
+                    Keep candidate
+                  </button>
+                  <button className="danger" disabled={busy} onClick={remove}>
+                    Yes, delete
+                  </button>
+                </div>
+              )}
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
       )}
     </div>
   );
 }
-
-
-
