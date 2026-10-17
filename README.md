@@ -6,7 +6,10 @@ A responsive ATS for the EarlyJobs assignment. Manage candidates and hiring stag
 - [Vercel production application](https://hireflow-mini-ats-kappa.vercel.app)
 - [Live application](https://hireflow-jayesh-ats.active-seed-2151.chatgpt.site)
 - [GitHub repository](https://github.com/Jayesh-Waghmare/hireflow-mini-ats)
-- [Short captioned demo](https://github.com/Jayesh-Waghmare/hireflow-mini-ats/releases/download/v1.0.0/Hireflow-demo.webm)
+- [Short captioned demo](https://github.com/Jayesh-Waghmare/hireflow-mini-ats/releases/download/v1.1.0/Hireflow-demo.webm)
+
+## Interface
+![Overview](docs/overview.png)
 
 ## Features
 - Candidate create, view, edit and delete with validation and duplicate email protection.
@@ -63,4 +66,5 @@ The optional tests/browser.mjs suite uses Playwright and an installed Chrome bro
 
 ## Vercel target
 See [Vercel deployment documentation](docs/VERCEL.md) for the shared React build, Vercel function, and persistent API architecture. Run npm run build:vercel to build this target. Vercel hosts the frontend and API gateway; candidate storage stays in the original Cloudflare D1 backend.
+
 

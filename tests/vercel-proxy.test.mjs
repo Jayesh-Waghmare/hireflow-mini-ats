@@ -38,6 +38,22 @@ test('Vercel blocks foreign browser writes, unsupported methods, and oversized p
   assert.equal((await forwardCandidates(new Request('https://hireflow.vercel.app/api/candidates', { method: 'POST', body: 'x'.repeat(32769) }), unreachable)).status, 413);
 });
 
+test('workspace cookie stays separate from upstream infrastructure cookies', async () => {
+  const workspace = 'hireflow_workspace=12345678-1234-1234-1234-123456789012; Path=/; Expires=Sun, 17 Oct 2027 12:00:00 GMT; HttpOnly; Secure; SameSite=Lax';
+  for (const combined of [false, true]) {
+    const headers = new Headers();
+    if (combined) {
+      headers.set('Set-Cookie', workspace + ', __cf_bm=upstream-only; Domain=chatgpt.site; Secure; SameSite=None');
+    } else {
+      headers.append('Set-Cookie', '__cf_bm=upstream-only; Domain=chatgpt.site; Secure');
+      headers.append('Set-Cookie', workspace);
+    }
+    const response = await forwardCandidates(new Request('https://hireflow.vercel.app/api/candidates'), async () => new Response('[]', { headers }));
+    assert.equal(response.headers.get('Set-Cookie'), workspace);
+    assert.doesNotMatch(response.headers.get('Set-Cookie'), /__cf_bm|Domain=/);
+  }
+});
+
 test('Vercel preserves API errors and reports upstream outages', async () => {
   let sent;
   const result = await forwardCandidates(new Request('https://hireflow.vercel.app/api/candidates?id=abc', { method: 'DELETE' }), async (url) => {
