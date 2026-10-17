@@ -72,6 +72,12 @@ node --env-file=.env.local --experimental-strip-types tests/storage.integration.
 
 This checks persistence, concurrent writes and blocked unauthenticated reads, then deletes its own test document. The optional tests/browser.mjs suite requires Playwright and Chrome; set BASE_URL to the running app and DEMO_OUTPUT to an artifact directory. It records a captioned demo and exercises the complete candidate workflow.
 
+The optional deployment check also verifies that the live API writes into the configured private store, handles simultaneous and sequential additions, isolates visitors, and deletes records:
+
+```sh
+BASE_URL=https://your-app.vercel.app node --env-file=.env.local --experimental-strip-types tests/deployment.integration.ts
+```
+
 ## Demo scope
 
 Each browser has a separate workspace. Clearing its cookie starts a fresh workspace. This is an assignment demo with a 500-candidate limit per workspace, not a shared team account system. All sample data is fictional. Authentication, team roles, retention controls and a relational database for larger datasets are possible next steps.

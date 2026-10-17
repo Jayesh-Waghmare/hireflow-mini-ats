@@ -4,7 +4,7 @@ import { mkdir,rename } from 'node:fs/promises';
 const base=process.env.BASE_URL||'http://localhost:5173';
 const out=process.env.DEMO_OUTPUT||'work/browser-results';
 await mkdir(out,{recursive:true});
-const browser=await chromium.launch({channel:'chrome',headless:true});
+const browser=await chromium.launch({channel:'chrome',headless:true,args:process.env.DISABLE_HTTP2 ? ['--disable-http2'] : []});
 const context=await browser.newContext({viewport:{width:1440,height:1000},recordVideo:{dir:out,size:{width:1440,height:1000}}});
 const page=await context.newPage();
 page.setDefaultTimeout(90000);page.setDefaultNavigationTimeout(120000);

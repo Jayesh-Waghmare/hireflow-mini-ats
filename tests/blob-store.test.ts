@@ -74,6 +74,9 @@ test("private Vercel storage reads current records and uses conditional writes",
       .every((r) => r.options.useCache === false),
   );
   assert.ok(requests.some((r) => r.options.ifMatch === "version-1"));
+  assert.ok(requests.filter((r) => "useCache" in r.options).every((r) =>
+    (r.options.headers as Record<string, string>)["Accept-Encoding"] === "identity",
+  ));
 });
 
 test("a concurrent first write is retried without losing the other candidate", async () => {
