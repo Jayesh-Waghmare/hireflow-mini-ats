@@ -3,6 +3,7 @@
 A responsive ATS for the EarlyJobs assignment. Manage candidates and hiring stages, search profiles, and see dashboard metrics update from real data.
 
 ## Submission links
+- [Vercel production application](https://hireflow-mini-ats-kappa.vercel.app)
 - [Live application](https://hireflow-jayesh-ats.active-seed-2151.chatgpt.site)
 - [GitHub repository](https://github.com/Jayesh-Waghmare/hireflow-mini-ats)
 - [Short captioned demo](https://github.com/Jayesh-Waghmare/hireflow-mini-ats/releases/download/v1.0.0/Hireflow-demo.webm)
@@ -58,4 +59,8 @@ Active means Applied through Offer. Stage percentages use all candidates as deno
 ## Browser checks and recording
 The optional tests/browser.mjs suite uses Playwright and an installed Chrome browser. Install Playwright separately to run it. Set BASE_URL to a running local server; DEMO_OUTPUT chooses the artifact folder. It records a captioned WebM demo and checks CRUD, filtering, stage movement, CSV, persistence, isolation and mobile overflow.
 
+
+
+## Vercel target
+See [Vercel deployment documentation](docs/VERCEL.md) for the shared React build, Vercel function, and persistent API architecture. Run npm run build:vercel to build this target. Vercel hosts the frontend and API gateway; candidate storage stays in the original Cloudflare D1 backend.
 
