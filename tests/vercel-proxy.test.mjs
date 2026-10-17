@@ -1,6 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { forwardCandidates } from '../lib/vercel-proxy.mjs';
+import entry from '../api/candidates.mjs';
+
+test('Vercel runtime context is not mistaken for the upstream fetch function', async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => new Response('[]');
+    const response = await entry.fetch(new Request('https://hireflow.vercel.app/api/candidates'), { waitUntil() {} });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), []);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
 
 test('Vercel initializes a workspace without caching or leaking unrelated cookies', async () => {
   let sent;
