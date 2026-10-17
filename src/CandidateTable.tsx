@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   flexRender,
   getCoreRowModel,
@@ -22,11 +22,13 @@ export function CandidateTable({
   compact = false,
   onSelect,
   empty,
+  filterKey = "",
 }: {
   data: Candidate[];
   compact?: boolean;
   onSelect: (candidate: Candidate) => void;
   empty: ReactNode;
+  filterKey?: string;
 }) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const columns = useMemo<ColumnDef<Candidate>[]>(
@@ -108,8 +110,16 @@ export function CandidateTable({
     initialState: { pagination: { pageSize: 10 } },
     getRowId: (candidate) => candidate.id,
     enableSorting: !compact,
+    autoResetPageIndex: false,
   });
   const { pageIndex, pageSize } = table.getState().pagination;
+  useEffect(() => {
+    table.setPageIndex(0);
+  }, [filterKey, sorting]);
+  useEffect(() => {
+    const lastPage = Math.max(0, Math.ceil(data.length / pageSize) - 1);
+    if (pageIndex > lastPage) table.setPageIndex(lastPage);
+  }, [data.length, pageIndex, pageSize]);
   return (
     <>
       <div className="table-scroll">

@@ -4,7 +4,7 @@ A small recruiting app for the EarlyJobs assignment: candidate management, hirin
 
 - [Live application](https://hireflow-mini-ats-kappa.vercel.app)
 - [Repository](https://github.com/Jayesh-Waghmare/hireflow-mini-ats)
-- [Demo video](https://github.com/Jayesh-Waghmare/hireflow-mini-ats/releases/download/v1.3.1/Hireflow-demo.webm)
+- [Demo video](https://github.com/Jayesh-Waghmare/hireflow-mini-ats/releases/download/v1.3.2/Hireflow-demo.webm)
 
 ![Overview](docs/overview.png)
 
@@ -74,7 +74,7 @@ GET /api/candidates initializes an HttpOnly workspace cookie and lists that work
 
 ## Verification
 
-Fourteen unit tests cover CRUD, stage history, duplicate handling, workspace isolation, validation, origin checks, private storage, fresh reads and write conflicts. npm run build includes strict TypeScript checking. GitHub Actions runs tests and the production build.
+Eighteen unit tests cover CRUD, stage history, duplicate handling, workspace isolation, validation, origin checks, private storage, fresh reads and write conflicts. npm run build includes strict TypeScript checking. GitHub Actions runs tests and the production build.
 
 To test the real storage connection using an isolated temporary document:
 
@@ -96,3 +96,9 @@ Each browser has a separate workspace. Clearing its cookie starts a fresh worksp
 
 Active means Applied through Offer. Stage percentages use all candidates as their denominator. Timestamps are stored in UTC and shown in the visitor's locale. This Vercel-only release starts with fresh data, as requested.
 
+
+## Reliability checks
+
+The API returns the confirmed candidate after a successful save, so the UI does not depend on a second read. Interrupted responses are reconciled with a read before suggesting another save. Mutations are never automatically repeated. Partial sample loads can resume, profile failures remain visible, and unsuccessful initial loading offers reconnection. Table pages survive profile edits; obsolete position filters are cleared. Mobile navigation and candidate dialogs manage keyboard focus.
+
+`tests/reliability.browser.mjs` runs ten deterministic scenarios using the real API handler with temporary in-memory records and deliberate network failures. It also checks CSV quoting/formula escaping, duplicate validation, long mobile content and locked fields during saving. Run with Node 22, `--experimental-strip-types`, Playwright and Chrome; set `BASE_URL` to the app and `AUDIT_OUTPUT` to a scratch directory. These failure tests intercept API calls and do not write live candidate records.

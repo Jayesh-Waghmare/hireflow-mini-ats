@@ -101,6 +101,7 @@ export function createCandidateHandler(store: CandidateStore) {
       const input = parsed.data;
       const id = typeof raw.id === "string" ? raw.id : randomUUID();
       const now = new Date().toISOString();
+      let saved: Candidate | undefined;
       await store.update(existingWorkspace, (records) => {
         if (records.some((c) => c.email === input.email && c.id !== raw.id)) {
           throw new RequestError(
@@ -123,6 +124,7 @@ export function createCandidateHandler(store: CandidateStore) {
             updatedAt: now,
             history: JSON.stringify(history),
           };
+          saved = updated;
           return records.map((c) => (c.id === id ? updated : c));
         }
         if (records.length >= 500)
@@ -130,20 +132,18 @@ export function createCandidateHandler(store: CandidateStore) {
             400,
             "Demo limit: 500 candidates per workspace.",
           );
-        return [
-          ...records,
-          {
-            ...input,
-            id,
-            createdAt: now,
-            updatedAt: now,
-            history: JSON.stringify([
-              { text: `Added to ${input.stage}`, at: now },
-            ]),
-          },
-        ];
+        saved = {
+          ...input,
+          id,
+          createdAt: now,
+          updatedAt: now,
+          history: JSON.stringify([
+            { text: `Added to ${input.stage}`, at: now },
+          ]),
+        };
+        return [...records, saved];
       });
-      return response({ ok: true });
+      return response({ ok: true, candidate: saved });
     } catch (error) {
       if (error instanceof RequestError)
         return response({ error: error.message }, error.status);

@@ -55,10 +55,13 @@ function setup() {
 test("Vercel backend owns candidate CRUD, normalized email and timestamped stage history", async () => {
   const { initialize, request } = setup();
   const cookie = await initialize();
-  assert.equal((await request("POST", cookie, input)).status, 200);
+  const created = await request("POST", cookie, input);
+  assert.equal(created.status, 200);
+  const saved = (await created.json()) as { candidate: Candidate };
   let list = (await (await request("GET", cookie)).json()) as Candidate[];
   assert.equal(list.length, 1);
   const candidate = list[0];
+  assert.deepEqual(saved.candidate, candidate);
   assert.equal(candidate.email, "test@example.com");
   assert.match(candidate.id, /^[a-f0-9-]{36}$/);
   assert.equal("owner" in candidate, false);
@@ -183,4 +186,42 @@ test("storage errors are reported without leaking internal details", async () =>
   const result = await handle(new Request(base));
   assert.equal(result.status, 503);
   assert.doesNotMatch(await result.text(), /private-secret-details/);
+});
+
+test("the workspace limit still allows editing and deleting existing candidates", async () => {
+  const { initialize, request, records } = setup();
+  const cookie = await initialize();
+  await request("POST", cookie, input);
+  const [workspace, first] = [...records.entries()][0];
+  const candidate = first[0];
+  records.set(
+    workspace,
+    Array.from({ length: 500 }, (_, index) => ({
+      ...candidate,
+      id: index === 0 ? candidate.id : crypto.randomUUID(),
+      email: `candidate${index}@example.com`,
+    })),
+  );
+  assert.equal(
+    (await request("POST", cookie, { ...input, email: "new@example.com" }))
+      .status,
+    400,
+  );
+  assert.equal(
+    (
+      await request("POST", cookie, {
+        ...candidate,
+        email: "candidate0@example.com",
+        notes: "Still editable",
+      })
+    ).status,
+    200,
+  );
+  await request("DELETE", cookie, undefined, "?id=" + candidate.id);
+  assert.equal(
+    (await request("POST", cookie, { ...input, email: "new@example.com" }))
+      .status,
+    200,
+  );
+  assert.equal(records.get(workspace)!.length, 500);
 });
