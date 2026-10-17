@@ -561,7 +561,7 @@ export default function App() {
                       "green",
                     ],
                   ].map(([Icon, label, value, sub, color]: any) => (
-                    <article className="stat" key={label}>
+                    <article className={"stat stat-" + color} key={label}>
                       <div className="stat-top">
                         <span>{label}</span>
                         <span className={"stat-icon " + color}>

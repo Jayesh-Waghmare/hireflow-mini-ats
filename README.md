@@ -4,7 +4,7 @@ A small recruiting app for the EarlyJobs assignment: candidate management, hirin
 
 - [Live application](https://hireflow-mini-ats-kappa.vercel.app)
 - [Repository](https://github.com/Jayesh-Waghmare/hireflow-mini-ats)
-- [Demo video](https://github.com/Jayesh-Waghmare/hireflow-mini-ats/releases/download/v1.3.0/Hireflow-demo.webm)
+- [Demo video](https://github.com/Jayesh-Waghmare/hireflow-mini-ats/releases/download/v1.3.1/Hireflow-demo.webm)
 
 ![Overview](docs/overview.png)
 
