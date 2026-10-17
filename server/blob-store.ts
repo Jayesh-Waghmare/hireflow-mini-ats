@@ -55,6 +55,11 @@ export function createBlobCandidateStore(
             (error instanceof BlobError &&
               /already exists/i.test(error.message));
           if (!conflict) throw error;
+          console.warn("Candidate storage write conflict", {
+            attempt: attempt + 1,
+            message: error instanceof Error ? error.message : "Unknown conflict",
+            etag: current.etag,
+          });
         }
       }
       throw new RequestError(
