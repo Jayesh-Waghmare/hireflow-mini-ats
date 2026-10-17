@@ -4,7 +4,14 @@ import type { Candidate } from "../lib/model.ts";
 
 const base = process.env.BASE_URL;
 if (!base) throw new Error("Set BASE_URL to the deployed application");
-const initial = await fetch(`${base}/api/candidates`);
+// Retry dropped connections only for reads and idempotent deletes, never POSTs.
+async function readOrDelete(url: string, options?: RequestInit): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    try { return await fetch(url, options); }
+    catch (error) { if (attempt === 2) throw error; }
+  }
+}
+const initial = await readOrDelete(`${base}/api/candidates`);
 assert.equal(initial.status, 200);
 const cookie = initial.headers.getSetCookie().find((value) => value.startsWith("hireflow_workspace="))?.split(";")[0];
 assert.ok(cookie, "Fresh visitors must receive a workspace cookie");
@@ -28,14 +35,14 @@ try {
   assert.ok(records.some((record) => record.name === "First"));
   assert.ok(records.some((record) => record.name === "Second"));
   const metadata = await head(pathname);
-  assert.equal((await fetch(metadata.url)).ok, false);
-  const other = await fetch(`${base}/api/candidates`);
+  assert.equal((await readOrDelete(metadata.url)).ok, false);
+  const other = await readOrDelete(`${base}/api/candidates`);
   assert.deepEqual(await other.json(), []);
   for (const record of records) {
-    const response: Response = await fetch(`${base}/api/candidates?id=${record.id}`, { method: "DELETE", headers });
+    const response: Response = await readOrDelete(`${base}/api/candidates?id=${record.id}`, { method: "DELETE", headers });
     assert.equal(response.ok, true);
   }
-  const final = await fetch(`${base}/api/candidates`, { headers });
+  const final = await readOrDelete(`${base}/api/candidates`, { headers });
   assert.deepEqual(await final.json(), []);
   console.log("PASS: deployed Vercel API writes directly to private Vercel Blob, preserves simultaneous additions, isolates visitors, and deletes records.");
 } finally {
