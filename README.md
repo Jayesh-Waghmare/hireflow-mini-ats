@@ -1,70 +1,80 @@
 # Hireflow — Mini Applicant Tracking System
 
-A responsive ATS for the EarlyJobs assignment. Manage candidates and hiring stages, search profiles, and see dashboard metrics update from real data.
+A small recruiting app for the EarlyJobs assignment: candidate management, hiring stages, search and dashboard metrics.
 
-## Submission links
-- [Vercel production application](https://hireflow-mini-ats-kappa.vercel.app)
-- [Live application](https://hireflow-jayesh-ats.active-seed-2151.chatgpt.site)
-- [GitHub repository](https://github.com/Jayesh-Waghmare/hireflow-mini-ats)
-- [Short captioned demo](https://github.com/Jayesh-Waghmare/hireflow-mini-ats/releases/download/v1.1.0/Hireflow-demo.webm)
+- [Live application](https://hireflow-mini-ats-kappa.vercel.app)
+- [Repository](https://github.com/Jayesh-Waghmare/hireflow-mini-ats)
+- [Demo video](https://github.com/Jayesh-Waghmare/hireflow-mini-ats/releases/download/v1.2.0/Hireflow-demo.webm)
 
-## Interface
 ![Overview](docs/overview.png)
 
 ## Features
-- Candidate create, view, edit and delete with validation and duplicate email protection.
+
+- Add, view, edit and delete candidates with server-side validation and duplicate-email checks.
 - Applied, Screening, Interview, Offer, Hired and Rejected stages.
-- Drag-and-drop pipeline and accessible stage dropdown.
-- Search names, emails, roles, skills and locations. Combine role and stage filters.
-- Live totals, active candidates, interviews, hires and stage distribution.
+- Drag-and-drop pipeline and a stage dropdown on each profile.
+- Search by name, email, role, skills or location; combine role and stage filters.
+- Dashboard totals, active candidates, interviews, hires and stage distribution.
 - Recruiter notes, source, experience and timestamped stage history.
-- CSV export with spreadsheet formula escaping.
-- Opt-in fictional sample data, loading/error/empty states, responsive layouts.
-- Cloudflare D1 persistence. An HttpOnly cookie isolates each visitor's workspace.
+- Filtered CSV export with quoting and spreadsheet formula escaping.
+- Desktop and mobile layouts; optional fictional sample candidates.
+- Private persistent storage and isolated browser workspaces.
 
-## Stack
-React 19, TypeScript, Vinext (Next.js App Router compatible), Cloudflare Workers, Drizzle ORM, SQLite/D1, Zod and Lucide. Server routes validate writes; database queries are parameterized.
+## Architecture
 
-## Run locally
-Requires Node.js >=22.13 and npm.
+The full application runs on Vercel:
+
+Browser → React/Vite frontend → Vercel Node function → private Vercel Blob storage.
+
+The backend performs validation, candidate CRUD, duplicate checks, stage history and workspace isolation directly. There is no upstream API gateway or Cloudflare dependency. Candidate documents are private JSON objects, one per workspace. Reads bypass the storage cache; conditional ETag writes and bounded retries prevent concurrent requests from losing changes.
+
+## Local setup
+
+Requires Node.js 22 and npm.
 
 ```sh
-npm run install:ci
+npm ci
+vercel link
+vercel env pull .env.local
+vercel dev
+```
+
+The linked project must have a private Vercel Blob store. The server reads BLOB_READ_WRITE_TOKEN from the environment; never expose it through a VITE_ variable or commit it. npm run dev starts only the frontend. vercel dev runs both frontend and API functions.
+
+```sh
+npm test
 npm run build
-node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_odd_mantis.sql
-npm run dev
+vercel deploy --prod
 ```
-Apply migrations once in order. The server prints its local URL (usually port 5173). Sites applies production migrations during deployment.
 
-## Verify
-```sh
-node --experimental-strip-types --test tests/model.test.ts
-npx tsc --noEmit
-```
+## Source layout
+
+- src/: React UI and styling.
+- lib/model.ts: shared validation schema, filtering and metric calculations.
+- api/candidates.ts: Vercel function entry point.
+- server/candidate-service.ts: HTTP handling and candidate business logic.
+- server/blob-store.ts: private persistent storage and concurrent-write handling.
+- tests/: API, storage, model and browser checks.
 
 ## API
-GET /api/candidates initializes a workspace cookie and lists its records. POST creates a record, or updates one when id is supplied. DELETE /api/candidates?id=... removes a record within the current workspace. Errors return JSON and HTTP status codes. Responses are not cached. Cross-origin browser mutations are rejected.
 
-## Demo workflow
-1. Load fictional sample candidates from the dashboard.
-2. Add and open a candidate.
-3. Search by skill and combine role and stage filters.
-4. Move candidates through the pipeline and inspect history.
-5. Edit notes and refresh to verify persistence.
-6. Review dashboard metrics, export CSV and delete a test record.
+GET /api/candidates initializes an HttpOnly workspace cookie and lists that workspace's records. POST creates a record or updates an existing id. DELETE /api/candidates?id=... removes a record in the current workspace. The backend rejects foreign browser mutations, malformed input and duplicate emails. Responses are not cached.
 
-## Scope and tradeoffs
-This is an assignment demo. Anonymous workspaces let reviewers explore independently. Clearing cookies or switching browsers creates a new workspace; there is no cross-device login or shared team access. Workspaces have a 500-candidate limit. Authentication, roles, pagination, resume uploads, scheduling, rate limiting and retention are future production work. Use fictional data on the public demo.
+## Verification
 
-Active means Applied through Offer. Stage percentages use all candidates as denominator. Sample data is opt-in. Timestamps are UTC and displayed in the visitor's locale.
+Fourteen unit tests cover CRUD, stage history, duplicate handling, workspace isolation, validation, origin checks, private storage, fresh reads and write conflicts. npm run build includes strict TypeScript checking. GitHub Actions runs tests and the production build.
 
+To test the real storage connection using an isolated temporary document:
 
-## Browser checks and recording
-The optional tests/browser.mjs suite uses Playwright and an installed Chrome browser. Install Playwright separately to run it. Set BASE_URL to a running local server; DEMO_OUTPUT chooses the artifact folder. It records a captioned WebM demo and checks CRUD, filtering, stage movement, CSV, persistence, isolation and mobile overflow.
+```sh
+node --env-file=.env.local --experimental-strip-types tests/storage.integration.ts
+```
 
+This checks persistence, concurrent writes and blocked unauthenticated reads, then deletes its own test document. The optional tests/browser.mjs suite requires Playwright and Chrome; set BASE_URL to the running app and DEMO_OUTPUT to an artifact directory. It records a captioned demo and exercises the complete candidate workflow.
 
+## Demo scope
 
-## Vercel target
-See [Vercel deployment documentation](docs/VERCEL.md) for the shared React build, Vercel function, and persistent API architecture. Run npm run build:vercel to build this target. Vercel hosts the frontend and API gateway; candidate storage stays in the original Cloudflare D1 backend.
+Each browser has a separate workspace. Clearing its cookie starts a fresh workspace. This is an assignment demo with a 500-candidate limit per workspace, not a shared team account system. All sample data is fictional. Authentication, team roles, retention controls and a relational database for larger datasets are possible next steps.
 
+Active means Applied through Offer. Stage percentages use all candidates as their denominator. Timestamps are stored in UTC and shown in the visitor's locale. This Vercel-only release starts with fresh data, as requested.
 

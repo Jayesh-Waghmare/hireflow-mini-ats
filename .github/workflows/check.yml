@@ -9,9 +9,6 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm run install:ci
-      - run: node --experimental-strip-types --test tests/model.test.ts
-      - run: node --test tests/vercel-proxy.test.mjs
-      - run: npx tsc --noEmit
+      - run: npm ci
+      - run: npm test
       - run: npm run build
-      - run: npm run build:vercel

@@ -1,33 +1,36 @@
 # Vercel deployment
 
-The Vercel target uses Vite to build the same React candidate-management UI from `app/page.tsx`. The original Vinext/Cloudflare build remains available.
+Frontend, backend logic and persistent storage are all hosted on Vercel.
 
-## Architecture
+## Components
 
-Browser → Vercel static frontend → Vercel Node function `/api/candidates` → existing Cloudflare API → D1 database.
+- React/Vite frontend: src/ → dist/.
+- Node function: api/candidates.ts.
+- Business logic: server/candidate-service.ts.
+- Private Vercel Blob storage: server/blob-store.ts.
 
-The Vercel function forwards only the workspace cookie to the fixed candidate API endpoint. It preserves HTTP status codes, sets no-store caching, rejects cross-origin browser writes and limits request size. Candidate validation, ownership checks, duplicate prevention and stage-history updates continue to run in the existing database API.
+Candidate records are private JSON documents scoped by an HttpOnly workspace cookie. The storage adapter uses uncached reads and conditional ETag writes with retries, so concurrent updates do not silently overwrite one another.
 
-Each domain has a separate browser cookie, so the Vercel demo and original demo open independent workspaces. The Vercel deployment depends on the original API remaining online. This avoids introducing an unrelated database service or moving the existing data.
-
-## Build and publish
+## Provision and deploy
 
 ```sh
-npm run install:ci
-npm run build:vercel
+npm ci
+vercel link
+vercel blob create-store hireflow-candidates --access private --region iad1 --yes --environment production --environment preview --environment development
+vercel env pull .env.local
+npm test
+npm run build
 vercel deploy --prod
 ```
 
-`vercel.json` specifies the Vite build command and output folder. Vercel serves `dist-vercel/` and deploys `api/candidates.mjs` as a Node function. The configured backend endpoint is public and contains no secret credential. There are no additional required environment variables.
+Create a store only once. The CLI connects it to the project and adds BLOB_READ_WRITE_TOKEN to the selected server environments. On this project the private store is already provisioned and connected. Do not commit .env.local or place storage credentials in frontend environment variables.
+
+The vercel.json configuration selects Vite, builds the frontend into dist/ and deploys the TypeScript candidate API as a Vercel Node function.
 
 ## Checks
 
-```sh
-node --experimental-strip-types --test tests/model.test.ts tests/vercel-proxy.test.mjs
-npx tsc --noEmit
-```
-
-For browser workflow verification, run `tests/browser.mjs` with `BASE_URL` set to the Vercel production URL. See the main README for the optional Playwright setup.
+npm test runs model, API and storage-concurrency tests. npm run build runs TypeScript checking and builds the frontend. tests/storage.integration.ts verifies the real private store using a random temporary document; tests/browser.mjs covers the full app in a real browser.
 
 Production URL: https://hireflow-mini-ats-kappa.vercel.app
 
+The previous API proxy and Cloudflare starter code have been removed from the active project. No runtime call to the previous deployment is required.
