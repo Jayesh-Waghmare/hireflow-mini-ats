@@ -1058,7 +1058,6 @@ export default function App() {
                 )}
                 <footer className="main-footer">
                   <span>Hireflow · Mini ATS</span>
-                  <span>EarlyJobs assignment</span>
                 </footer>
               </>
             )}
